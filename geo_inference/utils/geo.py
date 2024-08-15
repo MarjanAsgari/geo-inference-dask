@@ -11,8 +11,12 @@ from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 from pyogrio.errors import DataSourceError
 
+import sys
+from pathlib import Path
+if str(Path(__file__).parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parents[1]))
 
-from ..config.logging_config import logger
+from config.logging_config import logger
 
 logger = logging.getLogger(__name__)
 

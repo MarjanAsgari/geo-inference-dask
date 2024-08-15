@@ -10,10 +10,14 @@ import shapely
 from rasterio import features
 from shapely.geometry import shape
 from pathlib import Path
+import sys
+from pathlib import Path
+if str(Path(__file__).parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parents[1]))
 
-from ..config.logging_config import logger
-from .geo import rasterio_load
-from .geo_transforms import geojson_to_px_gdf, df_to_coco_annos, make_coco_image_dict
+from config.logging_config import logger
+from utils.geo import rasterio_load
+from utils.geo_transforms import geojson_to_px_gdf, df_to_coco_annos, make_coco_image_dict
 
 logger = logging.getLogger(__name__)
 
