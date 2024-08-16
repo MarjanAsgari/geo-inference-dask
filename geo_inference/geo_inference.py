@@ -1,25 +1,25 @@
 import os
-import time
-import torch  # type: ignore
-import logging
-import pystac  # type: ignore
-import numpy as np
-import dask.array as da
-import asyncio
 import gc
-from dask import config
-from typing import Dict  # type: ignore
-from pathlib import Path
-import rasterio  # type: ignore
-from rasterio.windows import from_bounds  # type: ignore
-from dask_image.imread import imread as dask_imread  # type: ignore
-from typing import Union, Sequence, List
-from omegaconf import ListConfig  # type: ignore
-import threading
-import xarray as xr
-from dask.diagnostics import ResourceProfiler, ProgressBar
-from multiprocessing.pool import ThreadPool
 import sys
+import time
+import torch
+import pystac
+import logging
+import asyncio
+import rasterio
+import threading
+import numpy as np
+import xarray as xr
+from typing import Dict
+from dask import config
+import dask.array as da
+from pathlib import Path
+from omegaconf import ListConfig 
+from rasterio.windows import from_bounds
+from typing import Union, Sequence, List
+from multiprocessing.pool import ThreadPool
+from dask.diagnostics import ResourceProfiler, ProgressBar
+
 if str(Path(__file__).parents[0]) not in sys.path:
     sys.path.insert(0, str(Path(__file__).parents[0]))
 
@@ -184,10 +184,9 @@ class GeoInference:
         yolo_csv_path = self.work_dir.joinpath(prefix_base_name + "_yolo.csv")
         coco_json_path = self.work_dir.joinpath(prefix_base_name + "_coco.json")
         stride_patch_size = int(patch_size / 2)
-
+        print(mask_path)
         """ Processing starts"""
         start_time = time.time()
-        import rioxarray # type: ignore
         try:
             raster_stac_item = False
             if isinstance(inference_input, pystac.Item):
@@ -202,6 +201,7 @@ class GeoInference:
                 with rasterio.open(inference_input, "r") as src:
                     self.raster_meta = src.meta
                     self.raster = src
+                import rioxarray
                 aoi_dask_array = rioxarray.open_rasterio(inference_input, chunks=stride_patch_size)
                 try:
                     if bands_requested:
@@ -257,13 +257,11 @@ class GeoInference:
             pad_width = (
                 stride_patch_size - aoi_dask_array.shape[2] % stride_patch_size
             ) % stride_patch_size
-            print(aoi_dask_array.shape[0])
             aoi_dask_array = da.pad(
                 aoi_dask_array.data,
                 ((0, 0), (0, pad_height), (0, pad_width)),
                 mode="constant",
             ).rechunk((aoi_dask_array.shape[0], stride_patch_size, stride_patch_size))
-
 
             # run the model
             aoi_dask_array = aoi_dask_array.map_overlap(
@@ -295,7 +293,6 @@ class GeoInference:
                 dtype=np.uint8,
             )
             
-        
             with ResourceProfiler(dt=1) as prof:
                 with ProgressBar() as pbar:
                     pbar.register()
