@@ -204,7 +204,6 @@ class GeoInference:
                 self.json = None
                 if os.path.splitext(inference_input_path)[1].lower() == ".zarr":
                     aoi_dask_array = da.from_zarr(inference_input, chunks=(1, stride_patch_size, stride_patch_size))
-                    import re
                     meta_data_json = re.sub(r'\.zarr$', '', inference_input)
                     self.json = read_zarr_metadata(f"{meta_data_json}.json")
                     print(f"{meta_data_json}.json")
