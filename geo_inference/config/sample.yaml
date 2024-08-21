@@ -1,9 +1,9 @@
 arguments:
-  image: "/gpfs/fs5/nrcan/nrcan_geobase/work/transfer/work/deep_learning/dominica/data/Dominica_West_17OCT11_WV02_BGRN_COG.tif"
+  image: "/gpfs/fs5/nrcan/nrcan_geobase/work/dev/datacube/parallel/dask_geo_deep_learning/dask_geo_inference/performance_track/BC18-013904302070_01_P001-GE01_red-green-blue_clahe25.zarr"
   model: ./deep_learning_model/4cls_RGB_5_1_2_3_scripted.pt   # Name of Extraction Model: str
   bbox: None                      # "minx, miny, maxx, maxy" 
-  work_dir: ./dask_geo_deep_learning/dask_geo_inference   # Working Directory: str
-  bands_requested: '3,2,1'                    # requested Bands
+  work_dir: ./dask_geo_deep_learning/dask_geo_inference/performance_track  # Working Directory: str
+  bands_requested: '1,2,3'                    # requested Bands
   vec: False                      # Vector Coversion: bool 
   vec: False                      # Vector Conversion: bool 
   yolo: False                     # YOLO Conversion: bool

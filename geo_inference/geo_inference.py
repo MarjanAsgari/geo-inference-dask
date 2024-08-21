@@ -33,6 +33,7 @@ from utils.helpers import (
 )
 from geo_dask import (
     runModel,
+    read_zarr_metadata,
     sum_overlapped_chunks,
 )
 
@@ -198,11 +199,18 @@ class GeoInference:
                 except Exception:
                     raster_stac_item = False
             if not raster_stac_item:
-                with rasterio.open(inference_input, "r") as src:
-                    self.raster_meta = src.meta
-                    self.raster = src
-                import rioxarray
-                aoi_dask_array = rioxarray.open_rasterio(inference_input, chunks=stride_patch_size)
+                inference_input_path = Path(inference_input)
+                self.json = None
+                if os.path.splitext(inference_input_path)[1].lower() == ".zarr":
+                    aoi_dask_array = da.from_zarr(inference_input, chunks=(1, stride_patch_size, stride_patch_size))
+                    meta_data_json = Path(inference_input).with_suffix('')
+                    self.json = read_zarr_metadata(f"{meta_data_json}.json")
+                else:
+                    with rasterio.open(inference_input, "r") as src:
+                        self.raster_meta = src.meta
+                        self.raster = src
+                    import rioxarray
+                    aoi_dask_array = rioxarray.open_rasterio(inference_input, chunks=(1, stride_patch_size, stride_patch_size))
                 try:
                     if bands_requested:
                         raster_bands_request = [int(b) for b in bands_requested.split(",")]
@@ -210,10 +218,17 @@ class GeoInference:
                             len(raster_bands_request) != 0
                             and len(raster_bands_request) != aoi_dask_array.shape[0]
                         ):
-                            aoi_dask_array = xr.concat(
-                                [aoi_dask_array[i - 1, :, :] for i in raster_bands_request],
-                                dim="band"
-                            )
+                            if self.json is None:
+                                aoi_dask_array = xr.concat(
+                                    [aoi_dask_array[i - 1, :, :] for i in raster_bands_request],
+                                    dim="band"
+                                )
+                            else:
+                                aoi_dask_array = da.stack(
+                                    [aoi_dask_array[i - 1, :, :] for i in raster_bands_request],
+                                    axis =0,
+                                )
+
                 except Exception as e:
                     raise e
             else:
@@ -231,7 +246,7 @@ class GeoInference:
                         self.raster_meta = src.meta
                         self.raster = src
                     for key, value in bands_requested.items():
-                        all_bands_requested.append(rioxarray.open_rasterio(value["meta"].href, chunks=stride_patch_size))
+                        all_bands_requested.append(rioxarray.open_rasterio(value["meta"].href, chunks=(1, stride_patch_size, stride_patch_size)))
                 aoi_dask_array = xr.concat(all_bands_requested, dim="band")
                 del all_bands_requested
 
@@ -258,7 +273,7 @@ class GeoInference:
                 stride_patch_size - aoi_dask_array.shape[2] % stride_patch_size
             ) % stride_patch_size
             aoi_dask_array = da.pad(
-                aoi_dask_array.data,
+                aoi_dask_array.data if self.json is None else aoi_dask_array,
                 ((0, 0), (0, pad_height), (0, pad_width)),
                 mode="constant",
             ).rechunk((aoi_dask_array.shape[0], stride_patch_size, stride_patch_size))
@@ -298,7 +313,7 @@ class GeoInference:
                     pbar.register()
                     import rioxarray
                     logger.info("Inference is running:")
-                    aoi_dask_array = xr.DataArray(aoi_dask_array[: self.original_shape[1], : self.original_shape[2]], dims=("y", "x"),attrs=xarray_profile_info(self.raster))
+                    aoi_dask_array = xr.DataArray(aoi_dask_array[: self.original_shape[1], : self.original_shape[2]], dims=("y", "x"), attrs= self.json if self.json is not None else xarray_profile_info(self.raster))
                     aoi_dask_array.rio.to_raster(mask_path, tiled=True, lock=threading.Lock())
                 
             total_time = time.time() - start_time
