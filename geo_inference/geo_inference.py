@@ -181,12 +181,14 @@ class GeoInference:
         prefix_base_name = (
             base_name if not base_name.endswith(".tif") else base_name[:-4]
         )
+        prefix_base_name = (
+            prefix_base_name if not prefix_base_name.endswith(".zarr") else base_name[:-5]
+        )
         mask_path = self.work_dir.joinpath(prefix_base_name + "_mask.tif")
         polygons_path = self.work_dir.joinpath(prefix_base_name + "_polygons.geojson")
         yolo_csv_path = self.work_dir.joinpath(prefix_base_name + "_yolo.csv")
         coco_json_path = self.work_dir.joinpath(prefix_base_name + "_coco.json")
         stride_patch_size = int(patch_size / 2)
-        print(mask_path)
         """ Processing starts"""
         start_time = time.time()
         try:
@@ -206,7 +208,6 @@ class GeoInference:
                     aoi_dask_array = da.from_zarr(inference_input, chunks=(1, stride_patch_size, stride_patch_size))
                     meta_data_json = re.sub(r'\.zarr$', '', inference_input)
                     self.json = read_zarr_metadata(f"{meta_data_json}.json")
-                    print(f"{meta_data_json}.json")
                 else:
                     with rasterio.open(inference_input, "r") as src:
                         self.raster_meta = src.meta
