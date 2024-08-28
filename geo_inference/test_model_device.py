@@ -16,7 +16,7 @@ if __name__ == "__main__":
         map_location=torch.device("cuda:1")
     )
     model2= model1.to("cuda:1")
-    print(f"model without mapping to cuda:1 is on {model1.device}")
-    print(f"model without mapping and using .to to cuda:1 is on {model2.device}")
+    print(f"model with mapping to cuda:1 is on {model1.device}")
+    print(f"model with mapping and using .to to cuda:1 is on {model2.device}")
 
 
