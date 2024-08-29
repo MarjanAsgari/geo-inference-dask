@@ -82,6 +82,7 @@ class GeoInference:
         multi_gpu: bool = False,
         gpu_id: int = 0,
         num_classes: int = 5,
+        prediction_threshold: float = 0.3,
     ):
         self.work_dir: Path = get_directory(work_dir)
         self.device = (
@@ -98,6 +99,7 @@ class GeoInference:
         self.mask_to_coco = mask_to_coco
         self.mask_to_yolo = mask_to_yolo
         self.classes = num_classes
+        self.prediction_threshold = prediction_threshold
         self.raster_meta = None
 
     @torch.no_grad()
