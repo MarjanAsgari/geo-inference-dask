@@ -13,3 +13,5 @@ arguments:
   mgpu: False
   classes : 5
   patch_size: 1024
+  workers : 5
+  prediction_thr : 0.3

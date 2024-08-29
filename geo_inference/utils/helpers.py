@@ -417,13 +417,15 @@ def cmd_interface(argv=None):
 
     parser.add_argument("-wd", "--work_dir", nargs=1, help="Working Directory")
 
-    parser.add_argument("-ps", "--patch_size", nargs=1, help="The Patch Size")
+    parser.add_argument("-ps", "--patch_size", type=int, nargs=1, help="The Patch Size")
+
+    parser.add_argument("-w", "--workers", type=int, nargs=1, default=0, help="Numbers of workers")
 
     parser.add_argument("-v", "--vec", nargs=1, help="Vector Conversion")
 
     parser.add_argument("-mg", "--mgpu", nargs=1, help="Multi GPU")
 
-    parser.add_argument("-cls", "--classes", nargs=1, help="Inference Classes")
+    parser.add_argument("-cls", "--classes", type=int, nargs=1, help="Inference Classes")
 
     parser.add_argument("-y", "--yolo", nargs=1, help="Yolo Conversion")
 
@@ -431,8 +433,10 @@ def cmd_interface(argv=None):
 
     parser.add_argument("-d", "--device", nargs=1, help="CPU or GPU Device")
 
-    parser.add_argument("-id", "--gpu_id", nargs=1, help="GPU ID, Default = 0")
-
+    parser.add_argument("-id", "--gpu_id", nargs=1, help="GPU ID")
+    
+    parser.add_argument("-pr", "--prediction_thr", nargs=1, help="Prediction Threshold", default = 0.3)
+    
     args = parser.parse_args()
 
     if args.args:
@@ -442,6 +446,7 @@ def cmd_interface(argv=None):
         bbox = None if config["arguments"]["bbox"].lower() == "none" else config["arguments"]["bbox"]
         work_dir = config["arguments"]["work_dir"]
         bands_requested = config["arguments"]["bands_requested"]
+        workers = config["arguments"]["workers"]
         vec = config["arguments"]["vec"]
         yolo = config["arguments"]["yolo"]
         coco = config["arguments"]["coco"]
@@ -450,12 +455,14 @@ def cmd_interface(argv=None):
         multi_gpu = config["arguments"]["mgpu"]
         classes = config["arguments"]["classes"]
         patch_size = config["arguments"]["patch_size"]
+        prediction_threshold = config["arguments"]["prediction_thr"]
     elif args.image:
         image =args.image[0]
         model = args.model[0] if args.model else None
         bbox = args.bbox[0] if args.bbox else None
         work_dir = args.work_dir[0] if args.work_dir else None
         bands_requested = args.bands_requested[0] if args.bands_requested else []
+        workers = args.workers[0] if args.workers else 0
         vec = args.vec[0] if args.vec else False
         yolo = args.yolo[0] if args.yolo else False
         coco = args.coco[0] if args.coco else False
@@ -464,6 +471,7 @@ def cmd_interface(argv=None):
         multi_gpu = args.mgpu[0] if args.mgpu else False
         classes = args.classes[0] if args.classes else 5
         patch_size = args.patch_size[0] if args.patch_size else 1024 
+        prediction_threshold = args.prediction_thr[0] if args.prediction_thr else 0.3
     else:
         print("use the help [-h] option for correct usage")
         raise SystemExit
@@ -471,6 +479,7 @@ def cmd_interface(argv=None):
         "model": model,
         "image": image,
         "bands_requested": bands_requested,
+        "workers": workers,
         "work_dir": work_dir,
         "classes": classes,
         "bbox": bbox,
@@ -481,6 +490,7 @@ def cmd_interface(argv=None):
         "device": device,
         "gpu_id": gpu_id,
         "patch_size": patch_size,
+        "prediction_threshold": prediction_threshold,
     }
     return arguments
 

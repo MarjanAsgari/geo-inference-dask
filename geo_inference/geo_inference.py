@@ -82,7 +82,7 @@ class GeoInference:
         multi_gpu: bool = False,
         gpu_id: int = 0,
         num_classes: int = 5,
-        prediction_threshold: float = 0.3,
+        prediction_threshold : float = 0.3,
     ):
         self.work_dir: Path = get_directory(work_dir)
         self.device = (
@@ -108,6 +108,7 @@ class GeoInference:
         inference_input: Union[Path, str],
         bands_requested: List[str] = [],
         patch_size: int = 1024,
+        workers: int = 0,
         bbox: str = None,
     ) -> None:
         
@@ -120,6 +121,7 @@ class GeoInference:
                 inference_input=inference_input,
                 bands_requested=bands_requested,
                 patch_size=patch_size,
+                workers=workers,
                 bbox=bbox
             )
             self.gc_task.cancel()
@@ -135,6 +137,7 @@ class GeoInference:
         inference_input: Union[Path, str],
         bands_requested: List[str] = [],
         patch_size: int = 1024,
+        workers: int = 0,
         bbox: str = None,
     ) -> None:
         
@@ -153,12 +156,10 @@ class GeoInference:
         """
         
         # configuring dask 
-        try:
-            config.set(scheduler='threads', num_workers=int(os.getenv('SLURM_CPUS_PER_TASK', 'Not available')) - 1)
-            config.set(pool=ThreadPool(int(os.getenv('SLURM_CPUS_PER_TASK', 'Not available')) - 1))
-        except ValueError:
-            config.set(scheduler='threads', num_workers = os.cpu_count() - 1)
-            config.set(pool=ThreadPool(os.cpu_count() -1))
+        num_workers = len(os.sched_getaffinity(0)) - 1 if workers == 0 else workers
+        print(f"running dask with {num_workers} workers")
+        config.set(scheduler='threads', num_workers=num_workers)
+        config.set(pool=ThreadPool(num_workers))
         
         if not isinstance(inference_input, (str, Path)):
             raise TypeError(
@@ -233,7 +234,6 @@ class GeoInference:
                                     [aoi_dask_array[i - 1, :, :] for i in raster_bands_request],
                                     axis =0,
                                 )
-
                 except Exception as e:
                     raise e
             else:
@@ -289,6 +289,7 @@ class GeoInference:
                 model=self.model,
                 patch_size=patch_size,
                 device=self.device,
+                num_classes=self.classes,
                 chunks=(
                     self.classes + 1,
                     patch_size,
@@ -299,9 +300,11 @@ class GeoInference:
                 trim=False,
                 dtype=np.float16,
             )
+            print(self.prediction_threshold)
             aoi_dask_array = aoi_dask_array.map_overlap(
                 sum_overlapped_chunks,
                 chunk_size=patch_size,
+                prediction_threshold = self.prediction_threshold,
                 drop_axis=0,
                 chunks=(
                     stride_patch_size,
@@ -313,13 +316,12 @@ class GeoInference:
                 dtype=np.uint8,
             )
             
-            with ResourceProfiler(dt=1) as prof:
-                with ProgressBar() as pbar:
-                    pbar.register()
-                    import rioxarray
-                    logger.info("Inference is running:")
-                    aoi_dask_array = xr.DataArray(aoi_dask_array[: self.original_shape[1], : self.original_shape[2]], dims=("y", "x"), attrs= self.json if self.json is not None else xarray_profile_info(self.raster))
-                    aoi_dask_array.rio.to_raster(mask_path, tiled=True, lock=threading.Lock())
+            with ProgressBar() as pbar:
+                pbar.register()
+                import rioxarray
+                logger.info("Inference is running:")
+                aoi_dask_array = xr.DataArray(aoi_dask_array[: self.original_shape[1], : self.original_shape[2]], dims=("y", "x"), attrs= self.json if self.json is not None else xarray_profile_info(self.raster))
+                aoi_dask_array.rio.to_raster(mask_path, tiled=True, lock=threading.Lock())
                 
             total_time = time.time() - start_time
             if self.mask_to_vec:
@@ -356,11 +358,13 @@ def main() -> None:
         device=arguments["device"],
         gpu_id=arguments["gpu_id"],
         num_classes=arguments["classes"],
+        prediction_threshold=arguments["prediction_threshold"]
     )
     geo_inference(
         inference_input=arguments["image"],
         bands_requested=arguments["bands_requested"],
         patch_size=arguments["patch_size"],
+        workers=arguments["workers"],
         bbox=arguments["bbox"],
     )
 
